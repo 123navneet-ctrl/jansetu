@@ -1,0 +1,17 @@
+# JanSetu Spring Boot Configuration Template
+server.port=8080
+
+# MySQL Database Configuration (Hand-written JDBC)
+# Replace with your MySQL credentials:
+spring.datasource.url=jdbc:mysql://localhost:3306/jansetu_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+spring.datasource.username=your_mysql_username_here
+spring.datasource.password=your_mysql_password_here
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# CORS Configuration
+jansetu.cors.allowed-origins=http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000
+
+# File Storage Configuration for CSV Exports/Imports
+jansetu.storage.export-dir=./exports
+jansetu.storage.backup-dir=./backups
+

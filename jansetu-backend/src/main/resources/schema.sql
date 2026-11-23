@@ -1,0 +1,236 @@
+-- JanSetu Database Schema
+-- MySQL 8.0+
+-- AI-Powered Government Welfare Scheme Discovery and Management System
+
+CREATE DATABASE IF NOT EXISTS jansetu_db;
+USE jansetu_db;
+
+-- 1. Users table matching profile form
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) DEFAULT '',
+    age INT DEFAULT 20,
+    state VARCHAR(100) DEFAULT 'Punjab',
+    occupation VARCHAR(100) DEFAULT 'Student',
+    annual_income VARCHAR(100) DEFAULT 'Below ₹1 lakh',
+    education VARCHAR(100) DEFAULT 'Undergraduate',
+    gender VARCHAR(50) DEFAULT 'Prefer not to say',
+    category VARCHAR(50) DEFAULT 'General',
+    disability VARCHAR(20) DEFAULT 'No',
+    marital_status VARCHAR(50) DEFAULT 'Single',
+    area_type VARCHAR(50) DEFAULT 'Urban',
+    minority VARCHAR(20) DEFAULT 'No',
+    phone VARCHAR(50) DEFAULT '',
+    district VARCHAR(100) DEFAULT '',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_users_state (state)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. Schemes table matching src/data/schemes.js
+CREATE TABLE IF NOT EXISTS schemes (
+    id INT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    icon VARCHAR(20) DEFAULT '✦',
+    color VARCHAR(50) DEFAULT 'blue',
+    match_score INT DEFAULT 75,
+    description TEXT NOT NULL,
+    benefit TEXT NOT NULL,
+    deadline VARCHAR(100) DEFAULT 'Open year-round',
+    state VARCHAR(100) DEFAULT 'All India',
+    tag VARCHAR(100) DEFAULT 'General',
+    eligibility TEXT,
+    documents TEXT,
+    how_to_apply TEXT,
+    application_link VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_schemes_state (state),
+    INDEX idx_schemes_category (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Saved Schemes table (user_id, scheme_id, unique pair, foreign keys)
+CREATE TABLE IF NOT EXISTS saved_schemes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    scheme_id INT NOT NULL,
+    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_scheme (user_id, scheme_id),
+    CONSTRAINT fk_saved_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_saved_scheme FOREIGN KEY (scheme_id) REFERENCES schemes (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 4. Scheme Verifications table (Admin Scheme Verification Pipeline)
+CREATE TABLE IF NOT EXISTS scheme_verifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    scheme_id INT NOT NULL,
+    status VARCHAR(50) DEFAULT 'PENDING',
+    priority INT DEFAULT 1,
+    notes TEXT,
+    verified_by VARCHAR(100) DEFAULT 'Admin Worker',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_verif_scheme FOREIGN KEY (scheme_id) REFERENCES schemes (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seed initial demo user
+INSERT INTO users (id, name, email, password, age, state, occupation, annual_income, education, gender, category, disability, marital_status, area_type, minority, phone, district, notes)
+VALUES (1, 'Aarav Sharma', 'aarav@jansetu.in', 'password123', 20, 'Punjab', 'Student', '₹2.5–5 lakh', 'Undergraduate', 'Male', 'General', 'No', 'Single', 'Urban', 'No', '+91 98765 43210', 'Amritsar', 'Seeking scholarship opportunities')
+ON DUPLICATE KEY UPDATE name=VALUES(name);
+
+-- Seed schemes from src/data/schemes.js
+INSERT INTO schemes (id, name, category, icon, color, match_score, description, benefit, deadline, state, tag, eligibility, documents, how_to_apply, application_link)
+VALUES
+(1, 'PM Vidyalakshmi Education Loan', 'Education', '🎓', 'violet', 90,
+ 'Support for eligible students pursuing higher education through education loans from participating banks under a centralised portal.',
+ 'Education loan support and interest subvention where applicable',
+ '10 Dec 2026', 'All India', 'Education',
+ 'Students admitted to eligible higher education institutions in India. Income and institution eligibility criteria apply.',
+ 'Admission letter from eligible institution, Identity proof (Aadhaar/passport), Income certificate of parents/guardian, Academic records, Bank account details',
+ 'Register on the PM Vidyalakshmi portal (vidyalakshmi.co.in). Select participating bank and submit loan application through the portal.',
+ 'https://www.vidyalakshmi.co.in'),
+
+(2, 'Post Matric Scholarship', 'Education', '📘', 'blue', 82,
+ 'Financial assistance to eligible students continuing education after matriculation. Available for students from SC, ST, OBC and EWS categories.',
+ 'Tuition fee reimbursement, maintenance allowance and other educational support',
+ '15 Jan 2027', 'State dependent', 'Scholarship',
+ 'Students who have passed matriculation (Class 10) and belong to SC/ST/OBC/EWS category. Family income limits and state rules apply.',
+ 'Caste/category certificate, Income certificate, Previous year mark sheet, Admission receipt, Bank account (preferably Aadhaar-linked), Domicile certificate',
+ 'Apply through the National Scholarship Portal (scholarships.gov.in) or the respective state scholarship portal during the application window.',
+ 'https://scholarships.gov.in'),
+
+(3, 'Ayushman Bharat PM-JAY', 'Healthcare', '♡', 'green', 76,
+ 'Health coverage for eligible families for secondary and tertiary hospital care under the world''s largest government-funded health insurance scheme.',
+ 'Health coverage up to ₹5 lakh per family per year for eligible hospital treatments',
+ 'Open year-round', 'Participating states', 'Healthcare',
+ 'Families identified under the Socio-Economic Caste Census (SECC) database and state-specific beneficiary lists. Check official portal for current criteria.',
+ 'Aadhaar card, Ration card (if applicable), SECC/beneficiary identification, State-issued health card where applicable',
+ 'Visit the nearest Common Service Centre (CSC) or empanelled hospital. Check eligibility at pmjay.gov.in using your Aadhaar or ration card.',
+ 'https://pmjay.gov.in'),
+
+(4, 'PM Kisan Samman Nidhi', 'Agriculture', '🌱', 'amber', 72,
+ 'Income support scheme providing direct financial transfers to eligible landholding farmer families across the country.',
+ '₹6,000 per year paid in three equal four-monthly installments of ₹2,000 directly to bank accounts',
+ 'Rolling basis', 'All India', 'Agriculture',
+ 'Small and marginal landholding farmer families with cultivable land parcels. Certain institutional landholders and higher income categories are excluded.',
+ 'Land ownership documents (Khasra/Khatauni), Aadhaar card, Bank account details with IFSC code, Mobile number linked to Aadhaar',
+ 'Self-register on pmkisan.gov.in (Farmers Corner) or through local agriculture department offices or Common Service Centres (CSCs).',
+ 'https://pmkisan.gov.in'),
+
+(5, 'Pradhan Mantri Awas Yojana (Urban)', 'Housing', '🏠', 'indigo', 68,
+ 'Housing assistance to urban beneficiaries belonging to Economically Weaker Sections (EWS), Low Income Groups (LIG), and Middle Income Groups (MIG).',
+ 'Interest subsidy on housing loans under Credit Linked Subsidy Scheme (CLSS) or central assistance for house construction/enhancement',
+ '31 Dec 2026', 'All India', 'Housing',
+ 'Beneficiary family should not own a pucca house in their name anywhere in India. Income criteria apply per category (EWS/LIG/MIG).',
+ 'Aadhaar card, Income certificate/salary slips, Property documents (for beneficiary-led construction), Bank account statements, Affidavit of no pucca house',
+ 'Apply through the official PMAY-U portal (pmaymis.gov.in) or through your municipal corporation/urban local body office.',
+ 'https://pmaymis.gov.in'),
+
+(6, 'Pradhan Mantri Mudra Yojana', 'Employment', '💼', 'violet', 74,
+ 'Collateral-free institutional credit to non-corporate, non-farm small and micro enterprises up to ₹10 lakh across three categories: Shishu, Kishor and Tarun.',
+ 'Loans up to ₹50,000 (Shishu), ₹50,000–₹5 lakh (Kishor), and ₹5 lakh–₹10 lakh (Tarun) with affordable interest rates and no collateral requirement',
+ 'Open year-round', 'All India', 'Entrepreneurship',
+ 'Non-farm micro and small entrepreneurs engaged in manufacturing, trading, services, or agri-allied activities needing business loans.',
+ 'Proof of identity (Aadhaar/Voter ID/PAN), Proof of residence, Business establishment proof, Quotations for machinery/items to be purchased, Bank account statements',
+ 'Apply through any public sector bank, private commercial bank, regional rural bank, or online through the Udyamimitra portal (udyamimitra.in).',
+ 'https://www.mudra.org.in'),
+
+(7, 'Sukanya Samriddhi Yojana', 'Women & Child', '👧', 'rose', 80,
+ 'Small savings scheme for the girl child under the Beti Bachao Beti Padhao campaign, offering high interest rate and tax exemption under Section 80C.',
+ 'Compounded annual interest rate (currently ~8.2%), tax-free interest, and tax deductions on investment under Section 80C of Income Tax Act',
+ 'Open year-round', 'All India', 'Savings',
+ 'Parents or legal guardians of a girl child below the age of 10 years. Maximum two accounts per family (with exceptions for twins/triplets).',
+ 'Girl child''s birth certificate, Identity proof of depositor/parent (Aadhaar/PAN), Address proof of parent/guardian, Recent photograph of child and parent',
+ 'Open an account at any post office branch or authorized public/private commercial bank branch with the initial deposit form.',
+ 'https://www.indiapost.gov.in'),
+
+(8, 'Indira Gandhi National Old Age Pension', 'Senior Citizens', '🏛️', 'teal', 65,
+ 'Monthly pension support to elderly citizens from families below poverty line under the National Social Assistance Programme (NSAP).',
+ 'Monthly pension amount of ₹200–₹500 (central contribution, often supplemented by state governments up to ₹1,000–₹2,500/month)',
+ 'Rolling basis', 'All India', 'Pension',
+ 'Indian citizens aged 60 years or above living below the poverty line (BPL). Criteria may vary slightly by state.',
+ 'Age proof certificate (Aadhaar/voter ID/birth certificate), BPL ration card or BPL survey listing, Bank or Post Office account passbook, Passport-size photographs',
+ 'Apply through the Gram Panchayat or Block Development Office (rural) or District Social Welfare Office / Urban Local Body (urban), or via nsap.nic.in.',
+ 'https://nsap.nic.in'),
+
+(9, 'PM Formalisation of Micro food Enterprises', 'Employment', '🌾', 'amber', 70,
+ 'Financial, technical and business support to existing and aspiring micro food processing enterprises under the Aatmanirbhar Bharat Abhiyan.',
+ 'Credit-linked capital subsidy of 35% of eligible project cost with maximum ceiling of ₹10 lakh per unit',
+ '31 Mar 2027', 'All India', 'Food Processing',
+ 'Existing micro food processing units, farmer producer organizations (FPOs), self-help groups (SHGs), and producer cooperatives.',
+ 'Aadhaar card, Bank account statements (last 6 months), Business registration or Udyam certificate, Project report/quotation for machinery, Land/building documents',
+ 'Submit application online on the PMFME portal (pmfme.mofpi.gov.in) through the state nodal agency or District Resource Person (DRP).',
+ 'https://pmfme.mofpi.gov.in'),
+
+(10, 'Stand-Up India Scheme', 'Employment', '🚀', 'cyan', 71,
+ 'Facilitates bank loans between ₹10 lakh and ₹1 crore to at least one SC or ST borrower and at least one woman borrower per bank branch for setting up greenfield enterprises.',
+ 'Composite loan (term loan and working capital) between ₹10 lakh and ₹1 crore covering up to 85% of project cost with low margin money requirement',
+ 'Open year-round', 'All India', 'Entrepreneurship',
+ 'SC/ST individuals and woman entrepreneurs above 18 years of age setting up greenfield enterprises in manufacturing, services, agri-allied activities or trading.',
+ 'Proof of identity, Category certificate (for SC/ST), Project report, Balance sheets/projections, Business registration, PAN card, Pollution clearances if applicable',
+ 'Apply online through the Stand-Up India portal (standupmitra.in) or directly through any commercial bank branch.',
+ 'https://www.standupmitra.in'),
+
+(11, 'Kisan Credit Card (KCC) Scheme', 'Agriculture', '💳', 'green', 75,
+ 'Timely and adequate credit support to farmers for cultivation expenses, post-harvest costs, consumption needs and working capital for allied activities.',
+ 'Revolving cash credit up to ₹3 lakh at a concessional interest rate of 4% (with 3% prompt repayment incentive) without collateral for loans up to ₹1.6 lakh',
+ 'Open year-round', 'All India', 'Credit',
+ 'All farmers (owner cultivators, tenant farmers, sharecroppers, oral lessees), self-help groups, and farmers involved in animal husbandry and fisheries.',
+ 'Duly filled application form, Land records (Revenue records/patta), Identity proof (Aadhaar/Voter ID), Address proof, Passport size photographs',
+ 'Apply at your local bank branch, Common Service Centre, or online through the respective bank''s agricultural banking portal.',
+ 'https://agricoop.nic.in'),
+
+(12, 'National Social Assistance Programme (NSAP)', 'Senior Citizens', '🤝', 'teal', 66,
+ 'Comprehensive welfare initiative providing pensions and assistance to elderly, widows, and persons with severe disabilities living below the poverty line.',
+ 'Monthly financial assistance transferred directly to beneficiary bank/post office accounts, with central and state co-contributions',
+ 'Rolling basis', 'All India', 'Social Welfare',
+ 'Citizens living below poverty line meeting specific category criteria: 60+ for old age pension, 40–79 for widow pension, 18+ with 80%+ disability for disability pension.',
+ 'BPL ration card, Age proof, Disability certificate (for disability pension), Death certificate of spouse (for widow pension), Bank account details, Aadhaar card',
+ 'Submit physical application to the local Village Panchayat / Block Development Office / Municipal office, or apply online at nsap.nic.in.',
+ 'https://nsap.nic.in'),
+
+(13, 'PM Street Vendor''s AtmaNirbhar Nidhi', 'Employment', '🛒', 'violet', 73,
+ 'Special micro-credit facility providing affordable working capital loans to street vendors to resume livelihoods adversely affected during economic disruptions.',
+ 'Initial collateral-free working capital loan up to ₹10,000, eligible for ₹20,000 on prompt repayment, and up to ₹50,000 in third tranche, with 7% interest subsidy',
+ 'Open year-round', 'All India', 'Micro-Credit',
+ 'Urban and peri-urban street vendors vending before March 2020 holding Certificate of Vending or Identity Card issued by Urban Local Bodies.',
+ 'Vending Certificate or ID card, Aadhaar card, Bank account details, Mobile number linked to Aadhaar',
+ 'Apply through the PM SVANidhi mobile app or web portal (pmsvanidhi.mohua.gov.in) with assistance from local ULB or Common Service Centres.',
+ 'https://pmsvanidhi.mohua.gov.in'),
+
+(14, 'PM Matru Vandana Yojana (PMMVY)', 'Women & Child', '🌸', 'rose', 77,
+ 'Maternity benefit programme providing conditional cash transfers to pregnant women and lactating mothers for health seeking and wage loss compensation.',
+ 'Direct benefit transfer of ₹5,000 (first child) and ₹6,000 (second child if girl) in installments upon fulfilling health and vaccination milestones',
+ 'Rolling basis', 'All India', 'Maternity',
+ 'Pregnant women and lactating mothers for their first and second live birth (conditions apply). Women in regular government employment are excluded.',
+ 'MCP card (Mother and Child Protection card), Aadhaar of beneficiary and husband, Bank/post office account linked with Aadhaar, Pregnancy registration proof',
+ 'Register at the nearest Anganwadi Centre (AWC) or approved government healthcare facility, or apply online via the PMMVY-CAS portal (pmmvy.wcd.gov.in).',
+ 'https://pmmvy.wcd.gov.in'),
+
+(15, 'National Apprenticeship Training Scheme', 'Employment', '⚙️', 'blue', 67,
+ 'Provides practical training to technically qualified youth in industrial establishments to enhance employability and work-ready skills.',
+ 'Stipend during training, practical experience and NCVT certification — amounts as per Apprentices Act rules',
+ 'Intake throughout the year', 'All India', 'Employment',
+ 'Graduates, diploma holders and ITI pass-outs in relevant trade/discipline. Age and qualification criteria apply per establishment.',
+ 'Educational certificates (degree/diploma/ITI), Aadhaar card, Photograph, Bank account details',
+ 'Register at apprenticeshipindia.org. Search for training opportunities and apply through participating establishments.',
+ 'https://apprenticeshipindia.org'),
+
+(16, 'National Means-cum-Merit Scholarship', 'Education', '🏆', 'violet', 78,
+ 'Scholarships for meritorious students of economically weaker sections to arrest dropout at Class VIII level and encourage continuation of secondary education.',
+ '₹12,000 per annum (₹1,000 per month) for Classes IX to XII',
+ '30 Nov 2026', 'All India', 'Scholarship',
+ 'Students who qualify the NMMS examination in Class VIII. Annual parental income not more than ₹3.5 lakh. Must secure minimum 55% in Class VII.',
+ 'NMMS examination admit card/score, Class VII mark sheet, Income certificate, Aadhaar card, Bank account details, School enrollment certificate',
+ 'Apply through National Scholarship Portal (scholarships.gov.in) after qualifying the state-level NMMS examination.',
+ 'https://scholarships.gov.in')
+ON DUPLICATE KEY UPDATE name=VALUES(name);
+
+-- Seed initial saved scheme for user 1
+INSERT INTO saved_schemes (user_id, scheme_id)
+VALUES (1, 2)
+ON DUPLICATE KEY UPDATE scheme_id=VALUES(scheme_id);
+
